@@ -34,3 +34,9 @@ module "iam" {
   source     = "./iam"
   project_id = var.project_id
 }
+
+module "storage" {
+  source = "./storage"
+  region = var.region
+  zone   = var.zone
+}

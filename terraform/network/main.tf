@@ -46,3 +46,16 @@ resource "google_compute_firewall" "allow_internal" {
 
   source_ranges = ["10.0.0.0/8"]
 }
+
+resource "google_dns_managed_zone" "dropbox_zone" {
+  name        = "project-dropbox-zone"
+  dns_name    = "project-dropbox.internal."
+  description = "Internal DNS zone for project dropbox"
+  visibility  = "private"
+
+  private_visibility_config {
+    networks {
+      network_url = google_compute_network.vpc.id
+    }
+  }
+}
