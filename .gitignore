@@ -14,3 +14,4 @@ secrets/
 # OS
 .DS_Store
 nginx/ssl/
+nginx/auth/
