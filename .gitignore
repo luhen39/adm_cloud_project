@@ -15,3 +15,5 @@ secrets/
 .DS_Store
 nginx/ssl/
 nginx/auth/
+k8s/minio/secret.yaml
+k8s/api/secret.yaml
