@@ -3,11 +3,11 @@ services:
     build: ./api
     ports:
       - "8000:8000"
+    env_file:
+      - .env
     environment:
       - MINIO_ENDPOINT=minio:9000
-      - MINIO_ACCESS_KEY=minioadmin
-      - MINIO_SECRET_KEY=minioadmin
-      - JWT_SECRET=testsecret
+      - MINIO_SECURE=false
     depends_on:
       - minio
 
