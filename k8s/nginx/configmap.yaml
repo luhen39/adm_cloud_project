@@ -43,44 +43,46 @@ data:
                 deny all;
             }
 
-            # Health check público (sem auth)
+            # Health check público
             location /health {
                 proxy_pass http://api-service:8000/health;
                 proxy_set_header Host $host;
                 proxy_set_header X-Real-IP $remote_addr;
             }
 
-            # Login público (sem auth)
+            # Login público
             location /auth/login {
                 proxy_pass http://api-service:8000/auth/login;
                 proxy_set_header Host $host;
                 proxy_set_header X-Real-IP $remote_addr;
             }
 
-            # Upload com rate limit
+            # Upload com rate limit (sem Basic Auth - JWT na API)
             location /files/upload {
-                auth_basic "Project Dropbox";
-                auth_basic_user_file /etc/nginx/auth/.htpasswd;
                 limit_req zone=upload_zone burst=5 nodelay;
                 proxy_pass http://api-service:8000;
                 proxy_set_header Host $host;
                 proxy_set_header X-Real-IP $remote_addr;
             }
 
-            # Download/List/Share/Delete com rate limit
+            # Download/List/Share/Delete com rate limit (sem Basic Auth - JWT na API)
             location /files/ {
-                auth_basic "Project Dropbox";
-                auth_basic_user_file /etc/nginx/auth/.htpasswd;
                 limit_req zone=download_zone burst=10 nodelay;
                 proxy_pass http://api-service:8000;
                 proxy_set_header Host $host;
                 proxy_set_header X-Real-IP $remote_addr;
             }
 
-            # Resto protegido
+            # Download/List/Share/Delete com rate limit (SEM barra)
+            location /files {
+                limit_req zone=download_zone burst=10 nodelay;
+                proxy_pass http://api-service:8000;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+            }
+
+            # Resto
             location / {
-                auth_basic "Project Dropbox";
-                auth_basic_user_file /etc/nginx/auth/.htpasswd;
                 proxy_pass http://api-service:8000;
                 proxy_set_header Host $host;
                 proxy_set_header X-Real-IP $remote_addr;

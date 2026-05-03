@@ -21,7 +21,8 @@ spec:
       serviceAccountName: api-sa
       containers:
         - name: api
-          image: gcr.io/adm-cloud-493215/project-dropbox-api:latest
+          image: project-dropbox-api:latest
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8000
           envFrom:
