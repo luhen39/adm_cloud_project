@@ -3,11 +3,15 @@ resource "google_compute_network" "vpc" {
   auto_create_subnetworks = false
 }
 
-resource "google_compute_subnetwork" "subnet" {
-  name          = "project-dropbox-subnet"
-  ip_cidr_range = "10.0.0.0/24"
+# Subnet PRIVADA para os nós GKE (sem IPs externos)
+resource "google_compute_subnetwork" "private_subnet" {
+  name          = "project-dropbox-subnet-private"
+  ip_cidr_range = "10.0.1.0/24"
   region        = var.region
   network       = google_compute_network.vpc.id
+  purpose       = "PRIVATE"
+  
+  private_ip_google_access = true  # Permite aceder GCP APIs sem IP externo
 
   secondary_ip_range {
     range_name    = "pods"
@@ -18,6 +22,15 @@ resource "google_compute_subnetwork" "subnet" {
     range_name    = "services"
     ip_cidr_range = "10.2.0.0/16"
   }
+}
+
+# Subnet PÚBLICA para o LoadBalancer do NGINX
+resource "google_compute_subnetwork" "public_subnet" {
+  name          = "project-dropbox-subnet-public"
+  ip_cidr_range = "10.0.2.0/24"
+  region        = var.region
+  network       = google_compute_network.vpc.id
+  purpose       = "PUBLIC"
 }
 
 resource "google_compute_firewall" "allow_https" {
@@ -45,6 +58,18 @@ resource "google_compute_firewall" "allow_internal" {
   }
 
   source_ranges = ["10.0.0.0/8"]
+}
+
+resource "google_compute_firewall" "allow_http" {
+  name    = "project-dropbox-allow-http"
+  network = google_compute_network.vpc.name
+
+  allow {
+    protocol = "tcp"
+    ports    = ["80"]
+  }
+
+  source_ranges = ["0.0.0.0/0"]
 }
 
 resource "google_dns_managed_zone" "dropbox_zone" {

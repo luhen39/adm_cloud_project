@@ -30,8 +30,9 @@ provider "kubernetes" {
 data "google_client_config" "default" {}
 
 module "network" {
-  source = "./network"
-  region = var.region
+  source     = "./network"
+  region     = var.region
+  project_id = var.project_id
 }
 
 module "iam" {
@@ -40,11 +41,12 @@ module "iam" {
 }
 
 module "cluster" {
-  source                = "./cluster"
-  zone                  = var.zone
-  vpc_name              = module.network.vpc_name
-  subnet_id             = module.network.subnet_id
-  service_account_email = module.iam.service_account_email
+  source                 = "./cluster"
+  zone                   = var.zone
+  vpc_name               = module.network.vpc_name
+  private_subnet_id      = module.network.private_subnet_id
+  service_account_email  = module.iam.service_account_email
+  project_id             = var.project_id
 }
 
 module "storage" {
