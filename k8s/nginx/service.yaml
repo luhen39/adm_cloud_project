@@ -4,6 +4,9 @@ kind: Service
 metadata:
   name: nginx-service
   namespace: default
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9113"
 spec:
   type: LoadBalancer
   selector:
