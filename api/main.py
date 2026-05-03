@@ -1,4 +1,5 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from prometheus_client import make_asgi_app
 from routes import auth, files, health
 
@@ -17,12 +18,55 @@ app.include_router(health.router, tags=["health"])
 metrics_app = make_asgi_app()
 app.mount("/metrics", metrics_app)
 
-from fastapi import Request
-from fastapi.responses import JSONResponse
+# RFC 7807 error handlers
+@app.exception_handler(401)
+async def unauthorized_handler(request: Request, exc):
+    return JSONResponse(
+        status_code=401,
+        content={
+            "type": "about:blank",
+            "title": "Unauthorized",
+            "status": 401,
+            "detail": "Authentication required",
+            "instance": str(request.url)
+        }
+    )
 
 @app.exception_handler(403)
 async def forbidden_handler(request: Request, exc):
     return JSONResponse(
-        status_code=401,
-        content={"detail": "Not authenticated"}
+        status_code=403,
+        content={
+            "type": "about:blank",
+            "title": "Forbidden",
+            "status": 403,
+            "detail": "Access denied",
+            "instance": str(request.url)
+        }
+    )
+
+@app.exception_handler(404)
+async def not_found_handler(request: Request, exc):
+    return JSONResponse(
+        status_code=404,
+        content={
+            "type": "about:blank",
+            "title": "Not Found",
+            "status": 404,
+            "detail": "Resource not found",
+            "instance": str(request.url)
+        }
+    )
+
+@app.exception_handler(413)
+async def too_large_handler(request: Request, exc):
+    return JSONResponse(
+        status_code=413,
+        content={
+            "type": "about:blank",
+            "title": "Payload Too Large",
+            "status": 413,
+            "detail": "Quota excedida",
+            "instance": str(request.url)
+        }
     )

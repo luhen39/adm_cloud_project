@@ -6,7 +6,6 @@ output "region" {
   value = var.region
 }
 
-# Network outputs
 output "vpc_id" {
   value = module.network.vpc_id
 }
@@ -19,7 +18,6 @@ output "vpc_name" {
   value = module.network.vpc_name
 }
 
-# Cluster outputs
 output "cluster_name" {
   value = module.cluster.cluster_name
 }
@@ -29,16 +27,23 @@ output "cluster_endpoint" {
   sensitive = true
 }
 
-# IAM outputs
+output "cluster_ca_certificate" {
+  value     = module.cluster.cluster_ca_certificate
+  sensitive = true
+}
+
 output "service_account_email" {
   value = module.iam.service_account_email
 }
 
-# Storage outputs
 output "minio_backup_bucket" {
   value = module.storage.minio_backup_bucket
 }
 
 output "minio_disk_name" {
   value = module.storage.minio_disk_name
+}
+
+output "hpa_name" {
+  value = module.hpa.hpa_name
 }

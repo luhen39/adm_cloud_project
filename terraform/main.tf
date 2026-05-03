@@ -5,6 +5,10 @@ terraform {
       source  = "hashicorp/google"
       version = "~> 5.0"
     }
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "~> 2.0"
+    }
   }
   backend "gcs" {
     bucket = "project-dropbox-tfstate"
@@ -17,9 +21,22 @@ provider "google" {
   region  = var.region
 }
 
+provider "kubernetes" {
+  host                   = "https://${module.cluster.cluster_endpoint}"
+  token                  = data.google_client_config.default.access_token
+  cluster_ca_certificate = base64decode(module.cluster.cluster_ca_certificate)
+}
+
+data "google_client_config" "default" {}
+
 module "network" {
   source = "./network"
   region = var.region
+}
+
+module "iam" {
+  source     = "./iam"
+  project_id = var.project_id
 }
 
 module "cluster" {
@@ -30,13 +47,13 @@ module "cluster" {
   service_account_email = module.iam.service_account_email
 }
 
-module "iam" {
-  source     = "./iam"
-  project_id = var.project_id
-}
-
 module "storage" {
   source = "./storage"
   region = var.region
   zone   = var.zone
+}
+
+module "hpa" {
+  source     = "./hpa"
+  depends_on = [module.cluster]
 }
