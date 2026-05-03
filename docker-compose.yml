@@ -1,8 +1,6 @@
 services:
   api:
     build: ./api
-    ports:
-      - "8000:8000"
     env_file:
       - .env
     environment:
@@ -20,3 +18,15 @@ services:
       - MINIO_ROOT_USER=minioadmin
       - MINIO_ROOT_PASSWORD=minioadmin
     command: server /data --console-address ":9001"
+
+  nginx:
+    image: nginx:latest
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx-dev.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./nginx/auth:/etc/nginx/auth:ro
+    depends_on:
+      - api
