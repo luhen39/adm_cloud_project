@@ -30,6 +30,8 @@ spec:
               subPath: nginx.conf
             - name: nginx-ssl
               mountPath: /etc/nginx/ssl
+            - name: nginx-auth
+              mountPath: /etc/nginx/auth
           resources:
             requests:
               cpu: "100m"
@@ -37,6 +39,18 @@ spec:
             limits:
               cpu: "500m"
               memory: "256Mi"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
 
         - name: nginx-exporter
           image: nginx/nginx-prometheus-exporter:latest
@@ -59,3 +73,6 @@ spec:
         - name: nginx-ssl
           secret:
             secretName: nginx-tls
+        - name: nginx-auth
+          secret:
+            secretName: nginx-htpasswd

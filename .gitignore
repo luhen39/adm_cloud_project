@@ -18,3 +18,4 @@ nginx/auth/
 k8s/minio/secret.yaml
 k8s/api/secret.yaml
 .env
+k8s/api/secret.yaml

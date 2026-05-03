@@ -1,37 +1,29 @@
 import uuid
+import io
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
 from services.auth import verify_token
 from services import minio as minio_service
 from config import settings
+from models import ShareRequest, ShareResponse
 
 router = APIRouter()
-
-class ShareRequest(BaseModel):
-    ttl_seconds: int = 3600
-
-class ShareResponse(BaseModel):
-    url: str
-    ttl_seconds: int
 
 @router.post("/upload")
 async def upload_file(
     file: UploadFile = File(...),
     username: str = Depends(verify_token)
 ):
-    # Verificar quota
     used = minio_service.get_user_quota_used(username)
     if used + file.size > settings.user_quota_bytes:
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail="Quota exceeded"
+            detail="Quota excedida"
         )
 
     file_id = str(uuid.uuid4())
     content = await file.read()
 
-    import io
     minio_service.upload_file(
         username=username,
         file_id=file_id,

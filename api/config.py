@@ -18,5 +18,7 @@ class Settings(BaseSettings):
 
     class Config:
         env_file = ".env"
+        # Permite ler variáveis de ambiente em maiúsculas
+        case_sensitive = False
 
 settings = Settings()
