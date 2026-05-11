@@ -1,7 +1,7 @@
 resource "google_container_cluster" "primary" {
   name     = "project-dropbox-cluster"
   location = var.zone
-
+  deletion_protection = false
   network    = var.vpc_name
   subnetwork = var.private_subnet_id
 
