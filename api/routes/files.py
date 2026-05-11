@@ -1,18 +1,23 @@
 import uuid
 import io
-from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, status
+from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, status, Header
 from fastapi.responses import StreamingResponse
-from services.auth import verify_token
 from services import minio as minio_service
 from config import settings
 from models import ShareRequest, ShareResponse
 
 router = APIRouter()
 
+def get_current_user(x_authenticated_user: str = Header(None)) -> str:
+    if not x_authenticated_user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail="Not authenticated")
+    return x_authenticated_user
+
 @router.post("/upload")
 async def upload_file(
     file: UploadFile = File(...),
-    username: str = Depends(verify_token)
+    username: str = Depends(get_current_user)
 ):
     used = minio_service.get_user_quota_used(username)
     if used + file.size > settings.user_quota_bytes:
@@ -43,7 +48,7 @@ async def upload_file(
 async def list_files(
     page: int = 1,
     page_size: int = 20,
-    username: str = Depends(verify_token)
+    username: str = Depends(get_current_user)
 ):
     files = minio_service.list_files(username)
     start = (page - 1) * page_size
@@ -58,7 +63,7 @@ async def list_files(
 @router.get("/{file_id}")
 async def download_file(
     file_id: str,
-    username: str = Depends(verify_token)
+    username: str = Depends(get_current_user)
 ):
     data = minio_service.download_file(username, file_id)
     return StreamingResponse(
@@ -70,7 +75,7 @@ async def download_file(
 @router.delete("/{file_id}")
 async def delete_file(
     file_id: str,
-    username: str = Depends(verify_token)
+    username: str = Depends(get_current_user)
 ):
     minio_service.delete_file(username, file_id)
     return {"message": f"Ficheiro {file_id} eliminado com sucesso"}
@@ -79,7 +84,7 @@ async def delete_file(
 async def share_file(
     file_id: str,
     request: ShareRequest,
-    username: str = Depends(verify_token)
+    username: str = Depends(get_current_user)
 ):
     url = minio_service.generate_presigned_url(username, file_id, request.ttl_seconds)
     return ShareResponse(url=url, ttl_seconds=request.ttl_seconds)
@@ -87,6 +92,6 @@ async def share_file(
 @router.get("/{file_id}/meta")
 async def get_file_meta(
     file_id: str,
-    username: str = Depends(verify_token)
+    username: str = Depends(get_current_user)
 ):
     return minio_service.get_file_meta(username, file_id)
