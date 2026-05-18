@@ -49,8 +49,7 @@ spec:
         - protocol: TCP
           port: 9113
     # Permitir tráfego externo para HTTP/HTTPS
-    - from: []
-      ports:
+    - ports:
         - protocol: TCP
           port: 80
         - protocol: TCP
