@@ -16,6 +16,12 @@ locals {
     yamldecode(doc)
     if trim(doc) != ""
   ]
+
+  network_policy_docs = [
+    for doc in split("---", trim(file("${path.module}/../k8s/network-policy.yml"))) :
+    yamldecode(doc)
+    if trim(doc) != ""
+  ]
 }
 
 resource "kubernetes_manifest" "api_serviceaccount" {
@@ -115,6 +121,12 @@ resource "kubernetes_manifest" "minio_deployment" {
     kubernetes_manifest.minio_pvc,
     kubernetes_secret.minio_secrets
   ]
+}
+
+resource "kubernetes_manifest" "network_policy" {
+  for_each = { for idx, doc in local.network_policy_docs : idx => doc }
+  manifest = each.value
+  depends_on = [module.cluster]
 }
 
 # NetworkPolicy - restringir /metrics a acesso interno
