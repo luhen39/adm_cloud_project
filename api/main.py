@@ -1,5 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
 from prometheus_client import make_asgi_app
 from routes import auth, files, health
 
@@ -68,5 +70,19 @@ async def too_large_handler(request: Request, exc):
             "status": 413,
             "detail": "Quota excedida",
             "instance": str(request.url)
+        }
+    )
+
+@app.exception_handler(RequestValidationError)
+async def validation_handler(request: Request, exc: RequestValidationError):
+    return JSONResponse(
+        status_code=422,
+        content={
+            "type": "about:blank",
+            "title": "Unprocessable Entity",
+            "status": 422,
+            "detail": "Validation error",
+            "instance": str(request.url),
+            "errors": jsonable_encoder(exc.errors())
         }
     )

@@ -60,6 +60,7 @@ spec:
           imagePullPolicy: IfNotPresent
           args:
             - --nginx.scrape-uri=https://127.0.0.1/stub_status
+            - --nginx.ssl-verify=false
           ports:
             - containerPort: 9113
           livenessProbe:

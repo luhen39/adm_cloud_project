@@ -18,7 +18,14 @@ def init_buckets():
         if not client.bucket_exists(bucket):
             client.make_bucket(bucket)
 
-def upload_file(username: str, file_id: str, file_data, size: int, content_type: str):
+def upload_file(
+    username: str,
+    file_id: str,
+    file_data,
+    size: int,
+    content_type: str,
+    metadata: dict | None = None
+):
     try:
         object_name = f"{username}/{file_id}"
         client.put_object(
@@ -26,7 +33,8 @@ def upload_file(username: str, file_id: str, file_data, size: int, content_type:
             object_name,
             file_data,
             size,
-            content_type=content_type
+            content_type=content_type,
+            metadata=metadata
         )
         return object_name
     except S3Error as e:
@@ -57,9 +65,15 @@ def get_file_meta(username: str, file_id: str):
     try:
         object_name = f"{username}/{file_id}"
         stat = client.stat_object(settings.minio_bucket, object_name)
+        metadata = stat.metadata or {}
+        name = (
+            metadata.get("original-filename")
+            or metadata.get("x-amz-meta-original-filename")
+            or file_id
+        )
         return {
             "file_id": file_id,
-            "name": file_id,
+            "name": name,
             "size": stat.size,
             "content_type": stat.content_type,
             "upload_timestamp": stat.last_modified.isoformat()

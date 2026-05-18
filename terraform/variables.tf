@@ -15,3 +15,57 @@ variable "zone" {
   type        = string
   default     = "europe-west1-b"
 }
+
+variable "minio_root_user" {
+  description = "MinIO root user"
+  type        = string
+  sensitive   = true
+}
+
+variable "minio_root_password" {
+  description = "MinIO root password"
+  type        = string
+  sensitive   = true
+}
+
+variable "minio_api_user" {
+  description = "MinIO API user for the application"
+  type        = string
+  sensitive   = true
+}
+
+variable "minio_api_password" {
+  description = "MinIO API password for the application"
+  type        = string
+  sensitive   = true
+}
+
+variable "jwt_secret" {
+  description = "JWT signing secret for the API"
+  type        = string
+  sensitive   = true
+}
+
+variable "auth_users" {
+  description = "Comma-separated users for /auth/login: user:pass,user2:pass2"
+  type        = string
+  sensitive   = true
+}
+
+variable "nginx_htpasswd" {
+  description = "Full htpasswd file contents used by NGINX basic auth"
+  type        = string
+  sensitive   = true
+}
+
+variable "nginx_tls_crt" {
+  description = "NGINX TLS certificate (PEM)"
+  type        = string
+  sensitive   = true
+}
+
+variable "nginx_tls_key" {
+  description = "NGINX TLS private key (PEM)"
+  type        = string
+  sensitive   = true
+}

@@ -3,45 +3,51 @@ import io
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, status, Header
 from fastapi.responses import StreamingResponse
 from services import minio as minio_service
+from services import auth as auth_service
 from config import settings
 from models import ShareRequest, ShareResponse
 
 router = APIRouter()
 
-def get_current_user(x_authenticated_user: str = Header(None)) -> str:
-    if not x_authenticated_user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
-                            detail="Not authenticated")
-    return x_authenticated_user
+def get_current_user(
+    authorization: str | None = Header(None),
+    x_authenticated_user: str | None = Header(None)
+) -> str:
+    return auth_service.get_username_from_headers(
+        authorization,
+        x_authenticated_user
+    )
 
 @router.post("/upload")
 async def upload_file(
     file: UploadFile = File(...),
     username: str = Depends(get_current_user)
 ):
+    file_id = str(uuid.uuid4())
+    content = await file.read()
+    size = len(content)
     used = minio_service.get_user_quota_used(username)
-    if used + file.size > settings.user_quota_bytes:
+    if used + size > settings.user_quota_bytes:
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
             detail="Quota excedida"
         )
 
-    file_id = str(uuid.uuid4())
-    content = await file.read()
-
+    content_type = file.content_type or "application/octet-stream"
     minio_service.upload_file(
         username=username,
         file_id=file_id,
         file_data=io.BytesIO(content),
-        size=len(content),
-        content_type=file.content_type or "application/octet-stream"
+        size=size,
+        content_type=content_type,
+        metadata={"original-filename": file.filename or file_id}
     )
 
     return {
         "file_id": file_id,
-        "filename": file.filename,
-        "size": len(content),
-        "content_type": file.content_type
+        "filename": file.filename or file_id,
+        "size": size,
+        "content_type": content_type
     }
 
 @router.get("")
@@ -66,8 +72,16 @@ async def download_file(
     username: str = Depends(get_current_user)
 ):
     data = minio_service.download_file(username, file_id)
+    def iterfile():
+        try:
+            for chunk in data.stream(32 * 1024):
+                yield chunk
+        finally:
+            data.close()
+            data.release_conn()
+
     return StreamingResponse(
-        data,
+        iterfile(),
         media_type="application/octet-stream",
         headers={"Content-Disposition": f"attachment; filename={file_id}"}
     )

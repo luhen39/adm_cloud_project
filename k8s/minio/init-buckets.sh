@@ -20,10 +20,13 @@ docker run --rm --network host minio/mc:latest mb local/files
 docker run --rm --network host minio/mc:latest mb local/thumbnails
 docker run --rm --network host minio/mc:latest mb local/tmp
 
-# Criar service account dedicado com política mínima
+# Criar service account dedicado com politica minima
+API_USER=$(kubectl get secret api-secrets -o jsonpath='{.data.MINIO_ACCESS_KEY}' | base64 -d)
+API_PASSWORD=$(kubectl get secret api-secrets -o jsonpath='{.data.MINIO_SECRET_KEY}' | base64 -d)
+
 docker run --rm --network host minio/mc:latest \
-  admin user add local api-user \
-  $(kubectl get secret minio-secrets -o jsonpath='{.data.MINIO_API_PASSWORD}' | base64 -d)
+  admin user add local "$API_USER" \
+  "$API_PASSWORD"
 
 # Criar política mínima (só acesso aos buckets necessários)
 docker run --rm --network host minio/mc:latest \
@@ -54,7 +57,7 @@ POLICY
 
 # Associar política ao utilizador
 docker run --rm --network host minio/mc:latest \
-  admin policy attach local api-policy --user api-user
+  admin policy attach local api-policy --user "$API_USER"
 
 kill $PF_PID
 echo "Buckets e service account criados com sucesso!"

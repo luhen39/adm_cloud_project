@@ -1,0 +1,28 @@
+# Copy to terraform.tfvars and replace values before apply
+
+minio_root_user     = "REPLACE_ME"
+minio_root_password = "REPLACE_ME"
+
+minio_api_user     = "REPLACE_ME"
+minio_api_password = "REPLACE_ME"
+
+jwt_secret = "REPLACE_ME"
+
+# Comma-separated users for /auth/login
+# Example: "admin:admin123,user1:password1"
+auth_users = "REPLACE_ME"
+
+# htpasswd content (generate with: htpasswd -nb USER PASS)
+nginx_htpasswd = <<EOF
+REPLACE_ME
+EOF
+
+# TLS certificate and key (PEM). You can generate a self-signed pair:
+# openssl req -x509 -newkey rsa:2048 -nodes -keyout tls.key -out tls.crt -days 365 -subj "/CN=localhost"
+nginx_tls_crt = <<EOF
+REPLACE_ME
+EOF
+
+nginx_tls_key = <<EOF
+REPLACE_ME
+EOF
