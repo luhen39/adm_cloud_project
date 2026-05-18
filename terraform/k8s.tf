@@ -116,3 +116,74 @@ resource "kubernetes_manifest" "minio_deployment" {
     kubernetes_secret.minio_secrets
   ]
 }
+
+# NetworkPolicy - restringir /metrics a acesso interno
+resource "kubernetes_network_policy_v1" "api_metrics_internal" {
+  metadata {
+    name      = "api-metrics-internal"
+    namespace = "default"
+  }
+  spec {
+    pod_selector {
+      match_labels = { app = "api" }
+    }
+    policy_types = ["Ingress"]
+    ingress {
+      from {
+        pod_selector {
+          match_labels = { app = "prometheus" }
+        }
+      }
+      ports {
+        port     = "8000"
+        protocol = "TCP"
+      }
+    }
+    ingress {
+      from {
+        pod_selector {
+          match_labels = { app = "nginx" }
+        }
+      }
+      ports {
+        port     = "8000"
+        protocol = "TCP"
+      }
+    }
+  }
+}
+
+resource "kubernetes_network_policy_v1" "nginx_metrics_internal" {
+  metadata {
+    name      = "nginx-metrics-internal"
+    namespace = "default"
+  }
+  spec {
+    pod_selector {
+      match_labels = { app = "nginx" }
+    }
+    policy_types = ["Ingress"]
+    ingress {
+      from {
+        pod_selector {
+          match_labels = { app = "prometheus" }
+        }
+      }
+      ports {
+        port     = "9113"
+        protocol = "TCP"
+      }
+    }
+    ingress {
+      from {}
+      ports {
+        port     = "80"
+        protocol = "TCP"
+      }
+      ports {
+        port     = "443"
+        protocol = "TCP"
+      }
+    }
+  }
+}
