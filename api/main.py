@@ -1,9 +1,9 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-from fastapi.encoders import jsonable_encoder
-from fastapi.exceptions import RequestValidationError
 from prometheus_client import make_asgi_app
+from prometheus_fastapi_instrumentator import Instrumentator 
 from routes import auth, files, health
+from fastapi.exceptions import RequestValidationError
 
 app = FastAPI(
     title="Project Dropbox API",
@@ -11,14 +11,17 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# Instrumentar a API para métricas de latência e contagem de pedidos
+Instrumentator().instrument(app).expose(app, include_in_schema=False)   # ← NOVO
+
+# Prometheus metrics endpoint (mantido para métricas do processo)
+metrics_app = make_asgi_app()
+app.mount("/metrics", metrics_app)
+
 # Rotas
 app.include_router(auth.router, prefix="/auth", tags=["auth"])
 app.include_router(files.router, prefix="/files", tags=["files"])
 app.include_router(health.router, tags=["health"])
-
-# Prometheus metrics endpoint
-metrics_app = make_asgi_app()
-app.mount("/metrics", metrics_app)
 
 # RFC 7807 error handlers
 @app.exception_handler(401)

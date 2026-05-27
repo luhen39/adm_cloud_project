@@ -1,0 +1,110 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: promtail-config
+  namespace: default
+
+data:
+  promtail.yml: |
+    server:
+      http_listen_port: 9080
+      grpc_listen_port: 0
+
+    positions:
+      filename: /tmp/positions.yaml
+
+    clients:
+      - url: http://loki-service:3100/loki/api/v1/push
+
+    scrape_configs:
+      - job_name: kubernetes-pods
+
+        kubernetes_sd_configs:
+          - role: pod
+
+        pipeline_stages:
+          - cri: {}
+
+        relabel_configs:
+          # namespace
+          - source_labels: [__meta_kubernetes_pod_namespace]
+            target_label: namespace
+
+          # pod
+          - source_labels: [__meta_kubernetes_pod_name]
+            target_label: pod
+
+          # container
+          - source_labels: [__meta_kubernetes_pod_container_name]
+            target_label: container
+
+          # node
+          - source_labels: [__meta_kubernetes_pod_node_name]
+            target_label: node
+
+          # 🔥 CORRETO PARA GKE / containerd
+          - source_labels:
+              - __meta_kubernetes_pod_namespace
+              - __meta_kubernetes_pod_name
+              - __meta_kubernetes_pod_container_name
+            separator: _
+            target_label: __path__
+            replacement: /var/log/containers/*$1_$2_$3*.log
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: promtail
+  namespace: default
+
+spec:
+  selector:
+    matchLabels:
+      app: promtail
+
+  template:
+    metadata:
+      labels:
+        app: promtail
+
+    spec:
+      serviceAccountName: promtail
+
+      containers:
+        - name: promtail
+          image: grafana/promtail:2.9.3
+
+          args:
+            - "-config.file=/etc/promtail/promtail.yml"
+
+          volumeMounts:
+            - name: config
+              mountPath: /etc/promtail/promtail.yml
+              subPath: promtail.yml
+
+            - name: varlog
+              mountPath: /var/log
+              readOnly: true
+
+            - name: tmp
+              mountPath: /tmp
+
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+
+      volumes:
+        - name: config
+          configMap:
+            name: promtail-config
+
+        - name: varlog
+          hostPath:
+            path: /var/log
+
+        - name: tmp
+          emptyDir: {}
