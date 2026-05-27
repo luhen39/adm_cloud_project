@@ -9,6 +9,7 @@ from models import ShareRequest, ShareResponse
 
 router = APIRouter()
 
+
 def get_current_user(
     authorization: str | None = Header(None),
     x_authenticated_user: str | None = Header(None)
@@ -18,6 +19,7 @@ def get_current_user(
         x_authenticated_user
     )
 
+
 @router.post("/upload")
 async def upload_file(
     file: UploadFile = File(...),
@@ -26,6 +28,7 @@ async def upload_file(
     file_id = str(uuid.uuid4())
     content = await file.read()
     size = len(content)
+
     used = minio_service.get_user_quota_used(username)
     if used + size > settings.user_quota_bytes:
         raise HTTPException(
@@ -50,6 +53,7 @@ async def upload_file(
         "content_type": content_type
     }
 
+
 @router.get("")
 async def list_files(
     page: int = 1,
@@ -66,25 +70,27 @@ async def list_files(
         "total": len(files)
     }
 
+
 @router.get("/{file_id}")
 async def download_file(
     file_id: str,
     username: str = Depends(get_current_user)
 ):
     data = minio_service.download_file(username, file_id)
+
     def iterfile():
         try:
-            for chunk in data.stream(32 * 1024):
+            for chunk in data.iter_chunks(32 * 1024):  # ✅ boto3 StreamingBody
                 yield chunk
         finally:
             data.close()
-            data.release_conn()
 
     return StreamingResponse(
         iterfile(),
         media_type="application/octet-stream",
         headers={"Content-Disposition": f"attachment; filename={file_id}"}
     )
+
 
 @router.delete("/{file_id}")
 async def delete_file(
@@ -94,6 +100,7 @@ async def delete_file(
     minio_service.delete_file(username, file_id)
     return {"message": f"Ficheiro {file_id} eliminado com sucesso"}
 
+
 @router.post("/{file_id}/share", response_model=ShareResponse)
 async def share_file(
     file_id: str,
@@ -102,6 +109,7 @@ async def share_file(
 ):
     url = minio_service.generate_presigned_url(username, file_id, request.ttl_seconds)
     return ShareResponse(url=url, ttl_seconds=request.ttl_seconds)
+
 
 @router.get("/{file_id}/meta")
 async def get_file_meta(

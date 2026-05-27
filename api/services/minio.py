@@ -1,22 +1,45 @@
-from minio import Minio
-from minio.error import S3Error
-from datetime import timedelta
+import boto3
+from botocore.config import Config
+from botocore.exceptions import ClientError
 from fastapi import HTTPException
 from config import settings
 
-client = Minio(
-    settings.minio_endpoint,
-    access_key=settings.minio_access_key,
-    secret_key=settings.minio_secret_key,
-    secure=settings.minio_secure
+# Cliente interno — usado para todas as operações normais (upload, download, etc.)
+client = boto3.client(
+    "s3",
+    endpoint_url=f"{'https' if settings.minio_secure else 'http'}://{settings.minio_endpoint}",
+    aws_access_key_id=settings.minio_access_key,
+    aws_secret_access_key=settings.minio_secret_key,
+    config=Config(
+        signature_version="s3v4",
+        s3={"addressing_style": "path"}
+    ),
+    region_name="us-east-1"
+)
+
+# Cliente público — usado apenas para gerar presigned URLs acessíveis externamente
+presign_client = boto3.client(
+    "s3",
+    endpoint_url=f"{'https' if settings.minio_secure else 'http'}://{settings.minio_public_endpoint}",
+    aws_access_key_id=settings.minio_access_key,
+    aws_secret_access_key=settings.minio_secret_key,
+    config=Config(
+        signature_version="s3v4",
+        s3={"addressing_style": "path"}
+    ),
+    region_name="us-east-1"
 )
 
 BUCKETS = ["files", "thumbnails", "tmp"]
 
+
 def init_buckets():
     for bucket in BUCKETS:
-        if not client.bucket_exists(bucket):
-            client.make_bucket(bucket)
+        try:
+            client.head_bucket(Bucket=bucket)
+        except ClientError:
+            client.create_bucket(Bucket=bucket)
+
 
 def upload_file(
     username: str,
@@ -28,75 +51,90 @@ def upload_file(
 ):
     try:
         object_name = f"{username}/{file_id}"
-        client.put_object(
+        extra_args = {"ContentType": content_type}
+        if metadata:
+            extra_args["Metadata"] = {k: str(v) for k, v in metadata.items()}
+        client.upload_fileobj(
+            file_data,
             settings.minio_bucket,
             object_name,
-            file_data,
-            size,
-            content_type=content_type,
-            metadata=metadata
+            ExtraArgs=extra_args
         )
         return object_name
-    except S3Error as e:
+    except ClientError as e:
         raise HTTPException(status_code=500, detail=f"Erro no upload: {str(e)}")
+
 
 def download_file(username: str, file_id: str):
     try:
         object_name = f"{username}/{file_id}"
-        return client.get_object(settings.minio_bucket, object_name)
-    except S3Error as e:
-        raise HTTPException(status_code=404, detail=f"Ficheiro não encontrado: {str(e)}")
+        response = client.get_object(Bucket=settings.minio_bucket, Key=object_name)
+        return response["Body"]
+    except ClientError as e:
+        if e.response["Error"]["Code"] in ("NoSuchKey", "404"):
+            raise HTTPException(status_code=404, detail="Ficheiro não encontrado")
+        raise HTTPException(status_code=500, detail=f"Erro no download: {str(e)}")
+
 
 def delete_file(username: str, file_id: str):
     try:
         object_name = f"{username}/{file_id}"
-        client.remove_object(settings.minio_bucket, object_name)
-    except S3Error as e:
+        client.delete_object(Bucket=settings.minio_bucket, Key=object_name)
+    except ClientError as e:
         raise HTTPException(status_code=404, detail=f"Ficheiro não encontrado: {str(e)}")
+
 
 def list_files(username: str):
     try:
-        objects = client.list_objects(settings.minio_bucket, prefix=f"{username}/")
-        return [obj.object_name.split("/")[-1] for obj in objects]
-    except S3Error as e:
+        response = client.list_objects_v2(
+            Bucket=settings.minio_bucket,
+            Prefix=f"{username}/"
+        )
+        contents = response.get("Contents", [])
+        return [obj["Key"].split("/")[-1] for obj in contents]
+    except ClientError as e:
         raise HTTPException(status_code=500, detail=f"Erro ao listar ficheiros: {str(e)}")
+
 
 def get_file_meta(username: str, file_id: str):
     try:
         object_name = f"{username}/{file_id}"
-        stat = client.stat_object(settings.minio_bucket, object_name)
-        metadata = stat.metadata or {}
-        name = (
-            metadata.get("original-filename")
-            or metadata.get("x-amz-meta-original-filename")
-            or file_id
-        )
+        response = client.head_object(Bucket=settings.minio_bucket, Key=object_name)
+        metadata = response.get("Metadata", {})
+        name = metadata.get("original-filename") or file_id
         return {
             "file_id": file_id,
             "name": name,
-            "size": stat.size,
-            "content_type": stat.content_type,
-            "upload_timestamp": stat.last_modified.isoformat()
+            "size": response["ContentLength"],
+            "content_type": response["ContentType"],
+            "upload_timestamp": response["LastModified"].isoformat()
         }
-    except S3Error as e:
-        raise HTTPException(status_code=404, detail=f"Ficheiro não encontrado: {str(e)}")
+    except ClientError as e:
+        if e.response["Error"]["Code"] in ("NoSuchKey", "404"):
+            raise HTTPException(status_code=404, detail="Ficheiro não encontrado")
+        raise HTTPException(status_code=500, detail=f"Erro ao obter metadata: {str(e)}")
+
 
 def generate_presigned_url(username: str, file_id: str, ttl_seconds: int) -> str:
     try:
         object_name = f"{username}/{file_id}"
-        url = client.presigned_get_object(
-            settings.minio_bucket,
-            object_name,
-            expires=timedelta(seconds=ttl_seconds)
+        url = presign_client.generate_presigned_url(
+            "get_object",
+            Params={"Bucket": settings.minio_bucket, "Key": object_name},
+            ExpiresIn=ttl_seconds
         )
         return url
-    except S3Error as e:
+    except ClientError as e:
         raise HTTPException(status_code=404, detail=f"Ficheiro não encontrado: {str(e)}")
+
 
 def get_user_quota_used(username: str) -> int:
     try:
-        objects = client.list_objects(settings.minio_bucket, prefix=f"{username}/")
-        total = sum(obj.size for obj in objects if obj.size)
-        return total
-    except S3Error:
+        response = client.list_objects_v2(
+            Bucket=settings.minio_bucket,
+            Prefix=f"{username}/"
+        )
+        contents = response.get("Contents", [])
+        return sum(obj.get("Size", 0) for obj in contents)
+    except ClientError:
         return 0
