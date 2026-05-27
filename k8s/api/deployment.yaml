@@ -30,6 +30,9 @@ spec:
                 name: api-config
             - secretRef:
                 name: api-secrets
+          env:
+          - name: MINIO_PUBLIC_ENDPOINT
+            value: "${minio_public_endpoint}"
           resources:
             requests:
               cpu: "250m"
