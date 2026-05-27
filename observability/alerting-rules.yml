@@ -1,0 +1,37 @@
+groups:
+  - name: cloud_storage_alerts
+    rules:
+      # Regra 1 — Error rate > 5%
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(http_requests_total{status=~"5.."}[5m]))
+          /
+          sum(rate(http_requests_total[5m])) > 0.05
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Taxa de erros acima de 5%"
+          description: "A taxa de erros 5xx está acima de 5% nos últimos 5 minutos."
+
+      # Regra 2 — Latência P95 > 2 segundos
+      - alert: HighLatency
+        expr: |
+          histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 2
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Latência P95 acima de 2 segundos"
+          description: "A latência P95 está acima de 2 segundos nos últimos 5 minutos."
+
+      # Regra 3 — CPU > 80%
+      - alert: HighCPU
+        expr: |
+          rate(process_cpu_seconds_total[5m]) > 0.8
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "CPU acima de 80%"
+          description: "O uso de CPU está acima de 80% nos últimos 5 minutos."
