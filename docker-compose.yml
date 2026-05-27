@@ -1,6 +1,8 @@
 services:
   api:
     build: ./api
+    ports:
+      - "8000:8000"
     env_file:
       - .env
     environment:
@@ -22,7 +24,7 @@ services:
   nginx:
     image: nginx:latest
     ports:
-      - "80:80"
+      - "8080:80"
       - "443:443"
     volumes:
       - ./nginx/nginx-dev.conf:/etc/nginx/nginx.conf:ro
