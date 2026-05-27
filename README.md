@@ -13,6 +13,9 @@
 3. Tear down with:
 	- terraform -chdir=terraform destroy
 
+## K6 Test
+k6 run tests/load-test.js
+
 ## Notes
 - All Kubernetes resources are provisioned by Terraform (no kubectl apply).
 - NGINX accepts Basic Auth (htpasswd) or JWT Bearer tokens.

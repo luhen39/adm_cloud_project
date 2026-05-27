@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     minio_secret_key: str = "replace-me"
     minio_secure: bool = False
     minio_bucket: str = "files"
-    minio_public_endpoint: str = "207.175.30.184:9000"
+    minio_public_endpoint: str = ""
 
     # JWT
     jwt_secret: str = "replace-me"

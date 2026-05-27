@@ -68,14 +68,10 @@ resource "kubernetes_secret" "minio_secrets" {
     name      = "minio-secrets"
     namespace = "default"
   }
-
-  type = "Opaque"
-
-  string_data = {
+  data = {
     MINIO_ROOT_USER     = var.minio_root_user
     MINIO_ROOT_PASSWORD = var.minio_root_password
   }
-
   depends_on = [module.cluster]
 }
 
@@ -84,16 +80,12 @@ resource "kubernetes_secret" "api_secrets" {
     name      = "api-secrets"
     namespace = "default"
   }
-
-  type = "Opaque"
-
-  string_data = {
+  data = {
     MINIO_ACCESS_KEY = var.minio_api_user
     MINIO_SECRET_KEY = var.minio_api_password
     JWT_SECRET       = var.jwt_secret
     AUTH_USERS       = var.auth_users
   }
-
   depends_on = [module.cluster]
 }
 
@@ -102,13 +94,9 @@ resource "kubernetes_secret" "nginx_htpasswd" {
     name      = "nginx-htpasswd"
     namespace = "default"
   }
-
-  type = "Opaque"
-
-  string_data = {
-    ".htpasswd" = var.nginx_htpasswd
+  data = {
+    ".htpasswd" = (file("${path.module}/../nginx/auth/.htpasswd"))
   }
-
   depends_on = [module.cluster]
 }
 
@@ -117,14 +105,11 @@ resource "kubernetes_secret" "nginx_tls" {
     name      = "nginx-tls"
     namespace = "default"
   }
-
   type = "kubernetes.io/tls"
-
-  string_data = {
-    "tls.crt" = var.nginx_tls_crt
-    "tls.key" = var.nginx_tls_key
+  data = {
+    "tls.crt" = file("${path.module}/../nginx/ssl/tls.crt")
+    "tls.key" = file("${path.module}/../nginx/ssl/tls.key")
   }
-
   depends_on = [module.cluster]
 }
 
@@ -138,8 +123,9 @@ resource "kubernetes_job_v1" "minio_init" {
   }
 
   spec {
-    backoff_limit            = 5
+    backoff_limit              = 10
     ttl_seconds_after_finished = 300
+    active_deadline_seconds    = 900
 
     template {
       metadata {
@@ -158,16 +144,25 @@ resource "kubernetes_job_v1" "minio_init" {
           command = ["/bin/sh", "-c"]
           args = [<<-EOT
             set -e
-            until mc alias set local http://minio-service:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"; do
-              echo "Waiting for MinIO..."
-              sleep 3
-            done
 
+            echo "Waiting for MinIO..."
+            until mc alias set local http://minio-service:9000 $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD; do
+              echo "MinIO not ready, retrying in 15s..."
+              sleep 15
+            done
+            echo "MinIO ready!"
+
+            echo "Creating buckets..."
             mc mb --ignore-existing local/files
             mc mb --ignore-existing local/thumbnails
             mc mb --ignore-existing local/tmp
+            echo "Buckets created."
 
-            mc admin user add local "$MINIO_ACCESS_KEY" "$MINIO_SECRET_KEY" || true
+            echo "Setting up API user..."
+            mc admin user remove local $MINIO_ACCESS_KEY 2>/dev/null || true
+            mc admin user add local $MINIO_ACCESS_KEY $MINIO_SECRET_KEY
+
+            mc admin policy remove local api-policy 2>/dev/null || true
 
             cat <<'POLICY' > /tmp/api-policy.json
             {
@@ -182,33 +177,39 @@ resource "kubernetes_job_v1" "minio_init" {
                     "s3:ListBucket"
                   ],
                   "Resource": [
-                    "arn:aws:s3:::files/*",
                     "arn:aws:s3:::files",
-                    "arn:aws:s3:::thumbnails/*",
+                    "arn:aws:s3:::files/*",
                     "arn:aws:s3:::thumbnails",
-                    "arn:aws:s3:::tmp/*",
-                    "arn:aws:s3:::tmp"
+                    "arn:aws:s3:::thumbnails/*",
+                    "arn:aws:s3:::tmp",
+                    "arn:aws:s3:::tmp/*"
                   ]
                 }
               ]
             }
             POLICY
 
-            mc admin policy create local api-policy /tmp/api-policy.json || true
-            mc admin policy attach local api-policy --user "$MINIO_ACCESS_KEY"
+            mc admin policy create local api-policy /tmp/api-policy.json
+            mc admin policy attach local api-policy --user $MINIO_ACCESS_KEY
+            echo "MinIO initialization complete!"
           EOT
           ]
 
-          env_from {
-            secret_ref {
-              name = kubernetes_secret.minio_secrets.metadata[0].name
-            }
+          env {
+            name  = "MINIO_ROOT_USER"
+            value = var.minio_root_user
           }
-
-          env_from {
-            secret_ref {
-              name = kubernetes_secret.api_secrets.metadata[0].name
-            }
+          env {
+            name  = "MINIO_ROOT_PASSWORD"
+            value = var.minio_root_password
+          }
+          env {
+            name  = "MINIO_ACCESS_KEY"
+            value = var.minio_api_user
+          }
+          env {
+            name  = "MINIO_SECRET_KEY"
+            value = var.minio_api_password
           }
         }
       }

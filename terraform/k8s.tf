@@ -1,26 +1,34 @@
+data "kubernetes_service" "minio" {
+  metadata {
+    name      = "minio-service"
+    namespace = "default"
+  }
+  depends_on = [kubernetes_manifest.minio_service]
+}
+
 locals {
   api_rbac_docs = [
-    for doc in split("---", trim(file("${path.module}/../k8s/rbac/api-role.yaml"))) :
+    for doc in split("---", trimspace(file("${path.module}/../k8s/rbac/api-role.yaml"))) :
     yamldecode(doc)
-    if trim(doc) != ""
+    if trimspace(doc) != ""
   ]
 
   nginx_rbac_docs = [
-    for doc in split("---", trim(file("${path.module}/../k8s/rbac/nginx-role.yaml"))) :
+    for doc in split("---", trimspace(file("${path.module}/../k8s/rbac/nginx-role.yaml"))) :
     yamldecode(doc)
-    if trim(doc) != ""
+    if trimspace(doc) != ""
   ]
 
   minio_rbac_docs = [
-    for doc in split("---", trim(file("${path.module}/../k8s/rbac/minio-role.yaml"))) :
+    for doc in split("---", trimspace(file("${path.module}/../k8s/rbac/minio-role.yaml"))) :
     yamldecode(doc)
-    if trim(doc) != ""
+    if trimspace(doc) != ""
   ]
 
   network_policy_docs = [
-    for doc in split("---", trim(file("${path.module}/../k8s/network-policy.yml"))) :
+    for doc in split("---", trimspace(file("${path.module}/../k8s/network-policy.yml"))) :
     yamldecode(doc)
-    if trim(doc) != ""
+    if trimspace(doc) != ""
   ]
 }
 
@@ -51,12 +59,15 @@ resource "kubernetes_manifest" "api_rbac" {
 }
 
 resource "kubernetes_manifest" "api_deployment" {
-  manifest = yamldecode(file("${path.module}/../k8s/api/deployment.yaml"))
+  manifest = yamldecode(templatefile("${path.module}/../k8s/api/deployment.yaml", {
+    minio_public_endpoint = "${data.kubernetes_service.minio.status[0].load_balancer[0].ingress[0].ip}:9000"
+  }))
   depends_on = [
     module.cluster,
     kubernetes_manifest.api_serviceaccount,
     kubernetes_manifest.api_configmap,
-    kubernetes_secret.api_secrets
+    kubernetes_secret.api_secrets,
+    kubernetes_job_v1.minio_init
   ]
 }
 

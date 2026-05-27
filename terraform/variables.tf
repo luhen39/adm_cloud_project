@@ -51,21 +51,3 @@ variable "auth_users" {
   type        = string
   sensitive   = true
 }
-
-variable "nginx_htpasswd" {
-  description = "Full htpasswd file contents used by NGINX basic auth"
-  type        = string
-  sensitive   = true
-}
-
-variable "nginx_tls_crt" {
-  description = "NGINX TLS certificate (PEM)"
-  type        = string
-  sensitive   = true
-}
-
-variable "nginx_tls_key" {
-  description = "NGINX TLS private key (PEM)"
-  type        = string
-  sensitive   = true
-}
