@@ -14,3 +14,7 @@ scrape_configs:
     static_configs:
       - targets: ['minio:9000']
     metrics_path: '/minio/health/cluster'
+  
+  - job_name: 'nginx'
+    static_configs:
+      - targets: ['nginx-exporter:9113']
