@@ -32,3 +32,13 @@ services:
       - ./nginx/auth:/etc/nginx/auth:ro
     depends_on:
       - api
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      - api
+      - minio
