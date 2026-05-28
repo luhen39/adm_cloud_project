@@ -1,0 +1,94 @@
+    {
+      "title": "Cloud Storage Dashboard",
+      "uid": "project-dropbox",
+      "schemaVersion": 27,
+      "refresh": "10s",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Request Rate (RPS)",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [{
+            "expr": "rate(nginx_http_requests_total[1m])",
+            "legendFormat": "RPS",
+            "datasource": "Prometheus"
+          }]
+        },
+        {
+          "id": 2,
+          "title": "Latência P50 / P95 / P99",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.50, rate(http_request_duration_seconds_bucket[5m]))",
+              "legendFormat": "P50",
+              "datasource": "Prometheus"
+            },
+            {
+              "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))",
+              "legendFormat": "P95",
+              "datasource": "Prometheus"
+            },
+            {
+              "expr": "histogram_quantile(0.99, rate(http_request_duration_seconds_bucket[5m]))",
+              "legendFormat": "P99",
+              "datasource": "Prometheus"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "HTTP Error Rate (4xx/5xx)",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "targets": [{
+            "expr": "sum(rate(http_requests_total{status=~\"4..|5..\"}[1m])) / sum(rate(http_requests_total[1m])) * 100",
+            "legendFormat": "Error %",
+            "datasource": "Prometheus"
+          }]
+        },
+        {
+          "id": 4,
+          "title": "Pod CPU Utilization",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+          "targets": [{
+            "expr": "rate(process_cpu_seconds_total[1m]) * 100",
+            "legendFormat": "CPU %",
+            "datasource": "Prometheus"
+          }]
+        },
+        {
+          "id": 5,
+          "title": "Pod Memory Utilization",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+          "targets": [{
+            "expr": "process_resident_memory_bytes / 1024 / 1024",
+            "legendFormat": "MB",
+            "datasource": "Prometheus"
+          }]
+        },
+        {
+          "id": 6,
+          "title": "MinIO Upload Throughput",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+          "targets": [
+            {
+              "expr": "rate(file_upload_size_bytes_count[5m])",
+              "legendFormat": "Uploads",
+              "datasource": "Prometheus"
+            },
+            {
+              "expr": "file_upload_size_bytes_sum",
+              "legendFormat": "Total Bytes",
+              "datasource": "Prometheus"
+            }
+          ]
+        }
+      ]
+    }
