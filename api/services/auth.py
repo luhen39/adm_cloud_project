@@ -3,6 +3,19 @@ from datetime import datetime, timedelta
 from fastapi import HTTPException, status
 from jose import jwt, JWTError
 from config import settings
+import secrets
+
+def get_users() -> dict:
+    """Carrega a lista de utilizadores do settings"""
+    users = {}
+    raw = settings.auth_users or ""
+    for item in raw.split(","):
+        item = item.strip()
+        if not item or ":" not in item:
+            continue
+        username, password = item.split(":", 1)
+        users[username] = password
+    return users
 
 
 def create_token(data: dict) -> str:
@@ -50,19 +63,21 @@ def get_username_from_authorization(authorization: str) -> str:
 
 
 def decode_basic_auth(authorization: str) -> str:
-    """Extrai username de um header Authorization: Basic <base64(user:pass)>"""
     try:
         _, _, encoded = authorization.partition(" ")
         decoded = base64.b64decode(encoded).decode("utf-8")
-        username, _, _ = decoded.partition(":")
-        if not username:
-            raise ValueError("Username vazio")
+        username, _, password = decoded.partition(":")
+        
+        # Validar contra a lista de utilizadores
+        users = get_users()
+        if username not in users or not secrets.compare_digest(users[username], password):
+            raise HTTPException(status_code=401, detail="Credenciais inválidas")
+        
         return username
+    except HTTPException:
+        raise
     except Exception:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Basic Auth invalido"
-        )
+        raise HTTPException(status_code=401, detail="Basic Auth inválido")
 
 
 def get_username_from_headers(

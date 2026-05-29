@@ -51,3 +51,21 @@ variable "auth_users" {
   type        = string
   sensitive   = true
 }
+
+variable "oauth_client_id" {
+  description = "Google OAuth Client ID"
+  type        = string
+  sensitive   = true
+}
+
+variable "oauth_client_secret" {
+  description = "Google OAuth Client Secret"
+  type        = string
+  sensitive   = true
+}
+
+variable "oauth_cookie_secret" {
+  description = "OAuth2-Proxy cookie secret"
+  type        = string
+  sensitive   = true
+}

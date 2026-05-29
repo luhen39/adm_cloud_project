@@ -223,3 +223,16 @@ resource "kubernetes_job_v1" "minio_init" {
     kubernetes_manifest.minio_deployment
   ]
 }
+
+resource "kubernetes_secret" "oauth_secrets" {
+  metadata {
+    name      = "oauth-secrets"
+    namespace = "default"
+  }
+  data = {
+    OAUTH_CLIENT_ID     = var.oauth_client_id
+    OAUTH_CLIENT_SECRET = var.oauth_client_secret
+    COOKIE_SECRET       = var.oauth_cookie_secret
+  }
+  depends_on = [module.cluster]
+}
