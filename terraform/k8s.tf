@@ -139,3 +139,58 @@ resource "kubernetes_manifest" "network_policy" {
   manifest = each.value
   depends_on = [module.cluster]
 }
+
+# Prometheus
+resource "kubernetes_manifest" "prometheus" {
+  for_each = {
+    for idx, doc in split("---", trimspace(file("${path.module}/../observability/prometheus-deployment.yaml"))) :
+    idx => yamldecode(doc)
+    if trimspace(doc) != ""
+  }
+  manifest = each.value
+  depends_on = [module.cluster]
+}
+
+# Grafana
+resource "kubernetes_manifest" "grafana" {
+  for_each = {
+    for idx, doc in split("---", trimspace(file("${path.module}/../observability/grafana-deployment.yaml"))) :
+    idx => yamldecode(doc)
+    if trimspace(doc) != ""
+  }
+  manifest = each.value
+  depends_on = [module.cluster]
+}
+
+# Loki
+resource "kubernetes_manifest" "loki" {
+  for_each = {
+    for idx, doc in split("---", trimspace(file("${path.module}/../observability/loki-deployment.yaml"))) :
+    idx => yamldecode(doc)
+    if trimspace(doc) != ""
+  }
+  manifest = each.value
+  depends_on = [module.cluster]
+}
+
+# Fluent Bit
+resource "kubernetes_manifest" "fluentbit" {
+  for_each = {
+    for idx, doc in split("---", trimspace(file("${path.module}/../observability/fluentbit-daemonset.yaml"))) :
+    idx => yamldecode(doc)
+    if trimspace(doc) != ""
+  }
+  manifest = each.value
+  depends_on = [module.cluster]
+}
+
+# Kube-state-metrics
+resource "kubernetes_manifest" "kube_state_metrics" {
+  for_each = {
+    for idx, doc in split("---", trimspace(file("${path.module}/../observability/kube-state-metrics.yaml"))) :
+    idx => yamldecode(doc)
+    if trimspace(doc) != ""
+  }
+  manifest = each.value
+  depends_on = [module.cluster]
+}
