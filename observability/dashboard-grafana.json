@@ -89,6 +89,29 @@
               "datasource": "Prometheus"
             }
           ]
+        },
+      {
+        "id": 7,
+        "title": "Replicas HPA",
+        "type": "table",
+        "gridPos": { "h": 8, "w": 24, "x": 0, "y": 24 },
+        "targets": [
+          {
+            "expr": "kube_horizontalpodautoscaler_status_current_replicas{horizontalpodautoscaler=\"project-dropbox-api-hpa\"}",
+            "legendFormat": "Current Replicas",
+            "datasource": "Prometheus",
+            "refId": "A"
+          },
+          {
+            "expr": "kube_horizontalpodautoscaler_spec_max_replicas{horizontalpodautoscaler=\"project-dropbox-api-hpa\"}",
+            "legendFormat": "Max Replicas",
+            "datasource": "Prometheus",
+            "refId": "B"
+          }
+        ],
+        "options": {
+          "showHeader": true
         }
+      }
       ]
     }
