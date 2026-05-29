@@ -32,13 +32,17 @@ UPLOAD_SIZE = Histogram(
 
 def get_current_user(
     authorization: str | None = Header(None),
-    x_authenticated_user: str | None = Header(None)
+    x_authenticated_user: str | None = Header(None),
+    x_forwarded_user: str | None = Header(None)
 ) -> str:
+    # 1. OAuth2-Proxy (prioridade máxima)
+    if x_forwarded_user:
+        return x_forwarded_user
+    # 2. Outros métodos (Authorization, Basic Auth)
     return auth_service.get_username_from_headers(
         authorization,
         x_authenticated_user
     )
-
 
 @router.post("/upload")
 async def upload_file(

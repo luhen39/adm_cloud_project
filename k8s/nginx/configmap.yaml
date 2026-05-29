@@ -35,116 +35,86 @@ data:
             ssl_certificate_key /etc/nginx/ssl/tls.key;
             ssl_protocols       TLSv1.2 TLSv1.3;
 
-            # Location especial para o OAuth2-Proxy (sem auth_request para evitar loop)
-            location /oauth2/ {
-                proxy_pass http://127.0.0.1:4180;
-                proxy_set_header Host $host;
-                proxy_set_header X-Real-IP $remote_addr;
-                proxy_set_header X-Scheme $scheme;
-                proxy_set_header Auth-Request-Redirect $request_uri;
-            }
+            error_page 401 = @login_redirect;
 
-            # Endpoint de autenticação - usando o caminho correto do OAuth2-Proxy
-            location = /oauth2/auth {
+            # Endpoint interno de autenticação:
+            # - Se tiver Authorization header (Basic/Bearer) → retorna 200 imediatamente
+            # - Se não tiver → delega ao oauth2-proxy (fluxo Google)
+            location = /internal-auth {
                 internal;
-                proxy_pass http://127.0.0.1:4180/oauth2/auth;
+                if ($http_authorization) {
+                    return 200;
+                }
+                proxy_pass              http://127.0.0.1:4180/oauth2/auth;
+                proxy_set_header        Host                    $host;
+                proxy_set_header        X-Real-IP               $remote_addr;
+                proxy_set_header        X-Scheme                $scheme;
+                proxy_set_header        Auth-Request-Redirect   $request_uri;
                 proxy_pass_request_body off;
-                proxy_set_header Content-Length "";
-                proxy_set_header X-Original-URI $request_uri;
-                proxy_set_header X-Original-Method $request_method;
-                proxy_set_header X-Original-Remote-Addr $remote_addr;
-                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header        Content-Length          "";
             }
 
-            # stub_status para o NGINX Exporter
+            location @login_redirect {
+                return 302 /oauth2/sign_in?rd=$request_uri;
+            }
+
             location /stub_status {
                 stub_status;
                 allow 127.0.0.1;
                 deny all;
             }
 
-            # Health check público
             location /health {
                 proxy_pass http://api-service:8000/health;
                 proxy_set_header Host $host;
             }
 
-            # Login público
             location /auth/login {
                 proxy_pass http://api-service:8000/auth/login;
                 proxy_set_header Host $host;
             }
 
-            # Protegido por OAuth2-Proxy
             location /files/upload {
-                auth_request /oauth2/auth;
-                auth_request_set $auth_user $upstream_http_x_forwarded_user;
-                auth_request_set $auth_email $upstream_http_x_forwarded_email;
-                
-                limit_req zone=upload_zone burst=5 nodelay;
-                
-                proxy_pass http://api-service:8000;
-                proxy_set_header Host $host;
-                proxy_set_header X-Real-IP $remote_addr;
-                proxy_set_header X-Forwarded-User $auth_user;
-                proxy_set_header X-Forwarded-Email $auth_email;
-                proxy_set_header Authorization $http_authorization;
-                
-                error_page 401 = @login_redirect;
+                auth_request      /internal-auth;
+                auth_request_set  $auth_user $upstream_http_x_auth_request_user;
+                limit_req         zone=upload_zone burst=5 nodelay;
+                proxy_pass        http://api-service:8000;
+                proxy_set_header  Host                  $host;
+                proxy_set_header  X-Authenticated-User  $auth_user;
             }
 
             location /files/ {
-                auth_request /oauth2/auth;
-                auth_request_set $auth_user $upstream_http_x_forwarded_user;
-                auth_request_set $auth_email $upstream_http_x_forwarded_email;
-                
-                limit_req zone=download_zone burst=10 nodelay;
-                
-                proxy_pass http://api-service:8000;
-                proxy_set_header Host $host;
-                proxy_set_header X-Real-IP $remote_addr;
-                proxy_set_header X-Forwarded-User $auth_user;
-                proxy_set_header X-Forwarded-Email $auth_email;
-                proxy_set_header Authorization $http_authorization;
-                
-                error_page 401 = @login_redirect;
+                auth_request      /internal-auth;
+                auth_request_set  $auth_user $upstream_http_x_auth_request_user;
+                limit_req         zone=download_zone burst=10 nodelay;
+                proxy_pass        http://api-service:8000;
+                proxy_set_header  Host                  $host;
+                proxy_set_header  X-Authenticated-User  $auth_user;
             }
 
             location /files {
-                auth_request /oauth2/auth;
-                auth_request_set $auth_user $upstream_http_x_forwarded_user;
-                auth_request_set $auth_email $upstream_http_x_forwarded_email;
-                
-                limit_req zone=download_zone burst=10 nodelay;
-                
-                proxy_pass http://api-service:8000;
-                proxy_set_header Host $host;
-                proxy_set_header X-Real-IP $remote_addr;
-                proxy_set_header X-Forwarded-User $auth_user;
-                proxy_set_header X-Forwarded-Email $auth_email;
-                proxy_set_header Authorization $http_authorization;
-                
-                error_page 401 = @login_redirect;
+                auth_request      /internal-auth;
+                auth_request_set  $auth_user $upstream_http_x_auth_request_user;
+                limit_req         zone=download_zone burst=10 nodelay;
+                proxy_pass        http://api-service:8000;
+                proxy_set_header  Host                  $host;
+                proxy_set_header  X-Authenticated-User  $auth_user;
             }
 
             location / {
-                auth_request /oauth2/auth;
-                auth_request_set $auth_user $upstream_http_x_forwarded_user;
-                auth_request_set $auth_email $upstream_http_x_forwarded_email;
-                
-                proxy_pass http://api-service:8000;
-                proxy_set_header Host $host;
-                proxy_set_header X-Real-IP $remote_addr;
-                proxy_set_header X-Forwarded-User $auth_user;
-                proxy_set_header X-Forwarded-Email $auth_email;
-                proxy_set_header Authorization $http_authorization;
-                
-                error_page 401 = @login_redirect;
+                auth_request      /internal-auth;
+                auth_request_set  $auth_user $upstream_http_x_auth_request_user;
+                proxy_pass        http://api-service:8000;
+                proxy_set_header  Host                  $host;
+                proxy_set_header  X-Authenticated-User  $auth_user;
             }
 
-            # Redirecionamento para login
-            location @login_redirect {
-                return 302 /oauth2/sign_in?rd=$request_uri;
+            location /oauth2/ {
+                proxy_pass       http://127.0.0.1:4180;
+                proxy_set_header Host                  $host;
+                proxy_set_header X-Real-IP             $remote_addr;
+                proxy_set_header X-Scheme              $scheme;
+                proxy_set_header Auth-Request-Redirect $request_uri;
             }
         }
     }

@@ -1,3 +1,4 @@
+# k8s/nginx/deployment.yaml
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -33,10 +34,10 @@ spec:
               mountPath: /etc/nginx/ssl
           resources:
             requests:
-              cpu: "100m"
+              cpu: "50m"
               memory: "128Mi"
             limits:
-              cpu: "500m"
+              cpu: "200m"
               memory: "256Mi"
           livenessProbe:
             httpGet:
@@ -65,9 +66,7 @@ spec:
             - --email-domain=*
             - --cookie-secure=false
             - --set-xauthrequest=true
-            - --pass-authorization-header=true
-            - --set-authorization-header=true
-            - --pass-access-token=true
+            - --pass-user-headers=true
             - --redirect-url=https://34.156.51.235.nip.io/oauth2/callback
           ports:
             - containerPort: 4180
@@ -76,10 +75,10 @@ spec:
                 name: oauth-secrets
           resources:
             requests:
-              cpu: "50m"
+              cpu: "10m"
               memory: "64Mi"
             limits:
-              cpu: "100m"
+              cpu: "50m"
               memory: "128Mi"
 
         - name: nginx-exporter
