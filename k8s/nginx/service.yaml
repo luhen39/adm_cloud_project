@@ -9,6 +9,7 @@ metadata:
     prometheus.io/port: "9113"
 spec:
   type: LoadBalancer
+  loadBalancerIP: "34.156.51.235"
   selector:
     app: nginx
   ports:

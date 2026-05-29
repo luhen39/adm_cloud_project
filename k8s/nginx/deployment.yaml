@@ -31,8 +31,6 @@ spec:
               subPath: nginx.conf
             - name: nginx-ssl
               mountPath: /etc/nginx/ssl
-            - name: nginx-auth
-              mountPath: /etc/nginx/auth
           resources:
             requests:
               cpu: "100m"
@@ -55,11 +53,40 @@ spec:
             initialDelaySeconds: 5
             periodSeconds: 10
 
+        - name: oauth2-proxy
+          image: quay.io/oauth2-proxy/oauth2-proxy:latest
+          args:
+            - --provider=google
+            - --client-id=$(OAUTH_CLIENT_ID)
+            - --client-secret=$(OAUTH_CLIENT_SECRET)
+            - --cookie-secret=$(COOKIE_SECRET)
+            - --upstream=http://api-service:8000
+            - --http-address=0.0.0.0:4180
+            - --email-domain=*
+            - --cookie-secure=false
+            - --set-xauthrequest=true
+            - --pass-authorization-header=true
+            - --set-authorization-header=true
+            - --pass-access-token=true
+            - --redirect-url=https://34.156.51.235.nip.io/oauth2/callback
+          ports:
+            - containerPort: 4180
+          envFrom:
+            - secretRef:
+                name: oauth-secrets
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "100m"
+              memory: "128Mi"
+
         - name: nginx-exporter
           image: nginx/nginx-prometheus-exporter:latest
           imagePullPolicy: IfNotPresent
           args:
-          - --nginx.scrape-uri=http://127.0.0.1/stub_status
+            - --nginx.scrape-uri=http://127.0.0.1/stub_status
           ports:
             - containerPort: 9113
           livenessProbe:
@@ -83,6 +110,3 @@ spec:
         - name: nginx-ssl
           secret:
             secretName: nginx-tls
-        - name: nginx-auth
-          secret:
-            secretName: nginx-htpasswd
