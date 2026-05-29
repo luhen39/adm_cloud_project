@@ -7,11 +7,12 @@ export const options = {
 };
 
 const ENV = __ENV.TARGET || 'local';
+const NGINX_IP = __ENV.NGINX_IP || '35.205.162.111';
 
 const BASE_URL = ENV === 'cloud' 
-  ? 'https://35.205.162.111'
+  ? `https://${NGINX_IP}`
   : 'http://localhost:8000';
-
+  
 export default function () {
   // 1. Login
   const loginRes = http.post(`${BASE_URL}/auth/login`, JSON.stringify({
