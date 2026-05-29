@@ -6,7 +6,11 @@ export const options = {
   duration: '5m',
 };
 
-const BASE_URL = 'http://localhost:8000';
+const ENV = __ENV.TARGET || 'local';
+
+const BASE_URL = ENV === 'cloud' 
+  ? 'https://35.205.162.111'
+  : 'http://localhost:8000';
 
 export default function () {
   // 1. Login
