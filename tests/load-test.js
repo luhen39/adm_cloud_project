@@ -6,12 +6,13 @@ export const options = {
   duration: '5m',
 };
 
+const ENV = __ENV.TARGET || 'local';
 const NGINX_IP = __ENV.NGINX_IP || 'localhost:8000';
 
 const BASE_URL = ENV === 'cloud' 
   ? `https://${NGINX_IP}`
   : 'http://localhost:8000';
-
+  
 export default function () {
   // 1. Login
   const loginRes = http.post(`${BASE_URL}/auth/login`, JSON.stringify({
