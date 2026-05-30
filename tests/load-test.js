@@ -7,7 +7,7 @@ export const options = {
 };
 
 const ENV = __ENV.TARGET || 'local';
-const NGINX_IP = __ENV.NGINX_IP || '35.205.162.111';
+const NGINX_IP = __ENV.NGINX_IP || 'localhost:8000';
 
 const BASE_URL = ENV === 'cloud' 
   ? `https://${NGINX_IP}`
