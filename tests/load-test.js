@@ -6,10 +6,10 @@ export const options = {
   duration: '5m',
 };
 
-const ENV = __ENV.TARGET || 'local';
+const NGINX_IP = __ENV.NGINX_IP || 'localhost:8000';
 
 const BASE_URL = ENV === 'cloud' 
-  ? 'https://35.205.162.111'
+  ? `https://${NGINX_IP}`
   : 'http://localhost:8000';
 
 export default function () {
@@ -34,6 +34,10 @@ export default function () {
   const uploadRes = http.post(`${BASE_URL}/files/upload`, {
     file: http.file('conteudo de teste k6', 'test.txt', 'text/plain')
   }, { headers });
+
+  if (uploadRes.status !== 200) {
+    console.log(`Upload failed: ${uploadRes.status} - ${uploadRes.body}`);
+  }
 
   check(uploadRes, {
     'upload bem sucedido': (r) => r.status === 200,
