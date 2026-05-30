@@ -194,3 +194,8 @@ resource "kubernetes_manifest" "kube_state_metrics" {
   manifest = each.value
   depends_on = [module.cluster]
 }
+
+resource "kubernetes_manifest" "k6_configmap" {
+  manifest = yamldecode(file("${path.module}/../k8s/k6-configmap.yaml"))
+  depends_on = [module.cluster]
+}
