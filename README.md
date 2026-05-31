@@ -293,7 +293,7 @@ kill %1
 
 # Grafana dashboard
 kubectl port-forward svc/grafana-service 3000:3000 &
-echo "Abrir http://localhost:3000 e verificar 6 painéis"
+echo "Open http://localhost:3000 anc verify 7 panels"
 
 # Loki + logs
 kubectl port-forward svc/loki-service 3100:3100 & sleep 2
