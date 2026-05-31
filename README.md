@@ -243,15 +243,15 @@ echo "Should redirect to Google → login → come back and show files"
 # 1. Log in to browser at https://${IP}.nip.io/files
 # 2. F12 → Application → Cookies → copy _oauth2_proxy cookie value
 # 3. Use the cookie in curl:
-COOKIE="COOKIE_VALUE"
-curl -k -H "Cookie: _oauth2_proxy=$COOKIE" https://${IP}.nip.io/files
+curl -k -H 'Cookie: _oauth2_proxy=<_OAUTH2_PROXY COOKIE VALUE>' https://${IP}.nip.io/files
 
 # Upload via OAuth
 echo "oauth upload" > /tmp/oauth.txt
-curl -k -H "Cookie: _oauth2_proxy=$COOKIE" \
+curl -k -H 'Cookie: _oauth2_proxy=<_OAUTH2_PROXY COOKIE VALUE>' \
   -X POST https://${IP}.nip.io/files/upload \
   -F "file=@/tmp/oauth.txt"
 ```
+> **Note:** Don´t forget to replace <_OAUTH2_PROXY COOKIE VALUE> by the actual cookie value!
 
 #### Task 3 - API + MinIO
 
