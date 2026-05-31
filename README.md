@@ -134,7 +134,7 @@ done
 echo "MinIO IP: $(kubectl get svc minio-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
 ```
 
-### 4.4 Phase 3 — API, NGINX, HPA, Observability, and Load Test Script
+### 4.4 Phase 3 — API, NGINX, HPA, Observability, and K6 Load Test Script
 
 ```bash
 terraform apply -auto-approve
@@ -190,6 +190,133 @@ echo "Access http://localhost:3000 and check the 'Cloud Storage Dashboard'"
 
 # Loki + Fluent Bit
 kubectl port-forward svc/loki-service 3100:3100 &
+```
+
+### 5.4 Complete Tests Per Task
+
+#### Task 1 — Terraform
+```bash
+kubectl get nodes
+kubectl get pods
+kubectl get hpa
+kubectl get pvc
+kubectl get networkpolicy
+kubectl get serviceaccounts
+```
+
+#### Task 2 — NGINX (SSL, Auth, Rate Limit)
+```bash
+DOMAIN="${IP}.nip.io"
+
+# SSL + redirect HTTP→HTTPS
+curl -k -v http://$DOMAIN/health 2>&1 | grep "301"
+
+# Basic Auth
+curl -k https://$DOMAIN/files                          # 302 (OAuth) or 401
+curl -k -u admin:admin123 https://$DOMAIN/files        # 200
+curl -k -u admin:wrong https://$DOMAIN/files            # 401
+
+# JWT
+TOKEN=$(curl -k -s -X POST https://$DOMAIN/auth/login -H "Content-Type: application/json" -d '{"username":"admin","password":"admin123"}' | jq -r .access_token)
+curl -k -H "Authorization: Bearer $TOKEN" https://$DOMAIN/files   # 200
+curl -k -H "Authorization: Bearer invalid" https://$DOMAIN/files  # 401
+
+# Rate limit
+kubectl run curl-test --image=curlimages/curl --rm -it --restart=Never -- \
+  sh -c 'echo "test" > /tmp/f; for i in $(seq 1 15); do
+    curl -k -s -o /dev/null -w "%{http_code}\n" -u admin:admin123 \
+      -X POST https://nginx-service/files/upload -F "file=@/tmp/f"
+  done'
+
+# NGINX Metrics
+kubectl port-forward svc/nginx-service 9113:9113 & sleep 2
+curl http://localhost:9113/metrics | grep nginx_http_requests_total
+kill %1
+```
+#### OAuth2-Proxy (Google)
+```bash
+# Browser Test (redirection to Google)
+echo "Open on Browser: https://${IP}.nip.io/files"
+echo "Should redirect to Google → login → come back and show files"
+
+# Session Cookie Test (via curl)
+# 1. Log in to browser at https://${IP}.nip.io/files
+# 2. F12 → Application → Cookies → copy _oauth2_proxy cookie value
+# 3. Use the cookie in curl:
+COOKIE="COOKIE_VALUE"
+curl -k -H "Cookie: _oauth2_proxy=$COOKIE" https://${IP}.nip.io/files
+
+# Upload via OAuth
+echo "oauth upload" > /tmp/oauth.txt
+curl -k -H "Cookie: _oauth2_proxy=$COOKIE" \
+  -X POST https://${IP}.nip.io/files/upload \
+  -F "file=@/tmp/oauth.txt"
+```
+
+#### Task 3 - API + MinIO
+
+```bash
+# Upload
+echo "test" > /tmp/t.txt
+FILE_ID=$(curl -k -s -u admin:admin123 -X POST https://$DOMAIN/files/upload -F "file=@/tmp/t.txt" | jq -r .file_id)
+
+# Listar
+curl -k -u admin:admin123 https://$DOMAIN/files
+
+# Download
+curl -k -u admin:admin123 https://$DOMAIN/files/$FILE_ID -o /tmp/down.txt && cat /tmp/down.txt
+
+# Metadados
+curl -k -u admin:admin123 https://$DOMAIN/files/$FILE_ID/meta
+
+# Share (presigned URL)
+curl -k -u admin:admin123 -X POST https://$DOMAIN/files/$FILE_ID/share \
+  -H "Content-Type: application/json" -d '{"ttl_seconds":3600}'
+
+# Delete
+curl -k -u admin:admin123 -X DELETE https://$DOMAIN/files/$FILE_ID
+
+# API Metrics
+kubectl port-forward svc/api-service 8000:8000 & sleep 2
+curl http://localhost:8000/metrics | grep -E "http_requests_total|file_upload"
+kill %1
+```
+
+#### Task 4 - Observability
+
+```bash
+# Prometheus targets
+kubectl port-forward svc/prometheus-service 9090:9090 & sleep 2
+curl -s http://localhost:9090/api/v1/targets | \
+  jq '.data.activeTargets[] | {job: .labels.job, health: .health}'
+kill %1
+
+# Grafana dashboard
+kubectl port-forward svc/grafana-service 3000:3000 &
+echo "Abrir http://localhost:3000 e verificar 6 painéis"
+
+# Loki + logs
+kubectl port-forward svc/loki-service 3100:3100 & sleep 2
+curl http://localhost:3100/ready
+curl -s "http://localhost:3100/loki/api/v1/query_range" \
+  --data-urlencode 'query={job="fluentbit"}' \
+  --data-urlencode 'limit=5' | jq '.data.result | length'
+kill %1 %2
+
+# Alerting rules
+kubectl port-forward svc/prometheus-service 9090:9090 & sleep 2
+curl -s http://localhost:9090/api/v1/rules | jq '.data.groups[].rules[].name'
+kill %1
+```
+#### Task 5 - K6 Load Test
+
+```bash
+kubectl apply -f k8s/k6-configmap.yaml
+kubectl apply -f k8s/k6-job.yaml
+kubectl logs job/k6-load-test -f
+
+# See HPA in another terminal
+kubectl get hpa -w
 ```
 
 ## 6. Load Testing (k6) — Task 5
