@@ -11,9 +11,6 @@
 *.key
 secrets/
 
-# Documentos (Enunciado, Slides)
-docs/
-
 # OS
 .DS_Store
 nginx/ssl/
