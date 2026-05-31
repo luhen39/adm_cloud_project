@@ -4,7 +4,6 @@ from botocore.exceptions import ClientError
 from fastapi import HTTPException
 from config import settings
 
-# Cliente interno — usado para todas as operações normais (upload, download, etc.)
 client = boto3.client(
     "s3",
     endpoint_url=f"{'https' if settings.minio_secure else 'http'}://{settings.minio_endpoint}",
@@ -17,7 +16,6 @@ client = boto3.client(
     region_name="us-east-1"
 )
 
-# Cliente público — usado apenas para gerar presigned URLs acessíveis externamente
 presign_client = boto3.client(
     "s3",
     endpoint_url=f"{'https' if settings.minio_secure else 'http'}://{settings.minio_public_endpoint}",

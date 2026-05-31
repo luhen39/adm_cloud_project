@@ -26,15 +26,14 @@ data:
 
     export const options = {
       stages: [
-        { duration: '20s', target: 0  },  // baseline
-        { duration: '50s', target: 13 },  // 25%
-        { duration: '30s', target: 13 },  // mantém 25%
-        { duration: '50s', target: 25 },  // 50%
-        { duration: '30s', target: 25 },  // mantém 50%
-        { duration: '50s', target: 50 },  // 100%
-        { duration: '30s', target: 50 },  // mantém 100%
-        { duration: '40s', target: 0  },  // desce
-        // Total: 300s = 5m00s
+        { duration: '20s', target: 0  }, 
+        { duration: '50s', target: 13 },  
+        { duration: '30s', target: 13 },  
+        { duration: '50s', target: 25 },  
+        { duration: '30s', target: 25 },  
+        { duration: '50s', target: 50 },  
+        { duration: '30s', target: 50 },  
+        { duration: '40s', target: 0  },  
       ],
       thresholds: {
         'http_req_duration':                ['p(95)<2000'],
@@ -91,8 +90,6 @@ data:
       const roll = Math.random();
 
       if (roll < 0.40) {
-        // --- LIST (40%) ---
-        // 503 NÃO conta — rate limit em download é esperado sob carga
         const res = http.get(`${BASE_URL}/files`, {
           ...params,
           tags: { name: 'list' },
@@ -101,8 +98,6 @@ data:
         errorRate.add(res.status !== 200 && res.status !== 503);
 
       } else if (roll < 0.80) {
-        // --- DOWNLOAD (40%) ---
-        // 503 NÃO conta — rate limit em download é esperado sob carga
         const files = preloaded[user.user] || [];
         if (files.length > 0) {
           const fileId = files[Math.floor(Math.random() * files.length)];
@@ -117,8 +112,6 @@ data:
         }
 
       } else {
-        // --- UPLOAD (20%) ---
-        // 503 CONTA — demonstra rate limit de 10 req/min a funcionar
         const fileContent = 'x'.repeat(randomIntBetween(100, 5000));
         const res = http.post(
           `${BASE_URL}/files/upload`,
@@ -160,12 +153,12 @@ data:
       const errRate    = errs.rate    || 0;
       const littleLaw  = (avgLatency / 1000) * rps;
 
-      console.log('\n=== LEI DE LITTLE ===');
-      console.log(`Latência média:             ${avgLatency.toFixed(2)}ms`);
-      console.log(`P95 Latência:               ${p95Latency.toFixed(2)}ms`);
+      console.log('\n LITTLEs LAW');
+      console.log(`Average Latency:             ${avgLatency.toFixed(2)}ms`);
+      console.log(`P95 Latency:               ${p95Latency.toFixed(2)}ms`);
       console.log(`Throughput (RPS):           ${rps.toFixed(2)}`);
-      console.log(`Erro Rate:                  ${(errRate * 100).toFixed(2)}%`);
-      console.log(`Concorrência estimada (N):  ${littleLaw.toFixed(2)} requests`);
+      console.log(`Error Rate:                  ${(errRate * 100).toFixed(2)}%`);
+      console.log(`Estimated Concurrency (N):  ${littleLaw.toFixed(2)} requests`);
 
       return { 'results.json': JSON.stringify(data, null, 2) };
     }

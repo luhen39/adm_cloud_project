@@ -1,16 +1,11 @@
 #!/bin/bash
-# Cria os 3 buckets e service account dedicado no MinIO
-# Corre DEPOIS do kubectl apply
 
-# Aguardar MinIO estar pronto
 kubectl wait --for=condition=ready pod -l app=minio --timeout=120s
 
-# Port-forward temporário
 kubectl port-forward svc/minio-service 9000:9000 &
 PF_PID=$!
 sleep 3
 
-# Criar buckets
 docker run --rm --network host minio/mc:latest \
   alias set local http://localhost:9000 \
   $(kubectl get secret minio-secrets -o jsonpath='{.data.MINIO_ROOT_USER}' | base64 -d) \
@@ -20,7 +15,6 @@ docker run --rm --network host minio/mc:latest mb local/files
 docker run --rm --network host minio/mc:latest mb local/thumbnails
 docker run --rm --network host minio/mc:latest mb local/tmp
 
-# Criar service account dedicado com politica minima
 API_USER=$(kubectl get secret api-secrets -o jsonpath='{.data.MINIO_ACCESS_KEY}' | base64 -d)
 API_PASSWORD=$(kubectl get secret api-secrets -o jsonpath='{.data.MINIO_SECRET_KEY}' | base64 -d)
 
@@ -28,7 +22,6 @@ docker run --rm --network host minio/mc:latest \
   admin user add local "$API_USER" \
   "$API_PASSWORD"
 
-# Criar política mínima (só acesso aos buckets necessários)
 docker run --rm --network host minio/mc:latest \
   admin policy create local api-policy /dev/stdin << 'POLICY'
 {
@@ -55,7 +48,6 @@ docker run --rm --network host minio/mc:latest \
 }
 POLICY
 
-# Associar política ao utilizador
 docker run --rm --network host minio/mc:latest \
   admin policy attach local api-policy --user "$API_USER"
 

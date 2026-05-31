@@ -1,5 +1,4 @@
 #!/bin/bash
-# Cria o Secret do MinIO (root creds) sem guardar valores no repo
 
 read -p "MinIO Root User: " MINIO_ROOT_USER
 read -s -p "MinIO Root Password: " MINIO_ROOT_PASSWORD

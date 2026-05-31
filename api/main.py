@@ -11,19 +11,15 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Instrumentar a API para métricas de latência e contagem de pedidos
 Instrumentator().instrument(app).expose(app, include_in_schema=False)   # ← NOVO
 
-# Prometheus metrics endpoint (mantido para métricas do processo)
 metrics_app = make_asgi_app()
 app.mount("/metrics", metrics_app)
 
-# Rotas
 app.include_router(auth.router, prefix="/auth", tags=["auth"])
 app.include_router(files.router, prefix="/files", tags=["files"])
 app.include_router(health.router, tags=["health"])
 
-# RFC 7807 error handlers
 @app.exception_handler(401)
 async def unauthorized_handler(request: Request, exc):
     return JSONResponse(

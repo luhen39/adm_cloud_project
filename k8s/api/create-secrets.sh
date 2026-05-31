@@ -1,6 +1,4 @@
 #!/bin/bash
-# Cria os Kubernetes Secrets para a API
-# Corre DEPOIS do terraform apply
 
 read -p "MinIO API User: " MINIO_USER
 read -s -p "MinIO API Password: " MINIO_PASSWORD
