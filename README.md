@@ -192,7 +192,7 @@ echo "Access http://localhost:3000 and check the 'Cloud Storage Dashboard'"
 kubectl port-forward svc/loki-service 3100:3100 &
 ```
 
-### 5.4 Complete Tests Per Task
+### 5.4 Complete Tests Per Task (1-4)
 
 #### Task 1 — Terraform
 ```bash
@@ -308,17 +308,6 @@ kubectl port-forward svc/prometheus-service 9090:9090 & sleep 2
 curl -s http://localhost:9090/api/v1/rules | jq '.data.groups[].rules[].name'
 kill %1
 ```
-#### Task 5 - K6 Load Test
-
-```bash
-kubectl apply -f k8s/k6-configmap.yaml
-kubectl apply -f k8s/k6-job.yaml
-kubectl logs job/k6-load-test -f
-
-# See HPA in another terminal
-kubectl get hpa -w
-```
-
 ## 6. Load Testing (k6) — Task 5
 
 ```bash
@@ -327,6 +316,9 @@ kubectl apply -f k8s/k6-job.yaml
 
 # Follow logs
 kubectl logs job/k6-load-test -f
+
+# See HPA in another terminal
+kubectl get hpa -w
 ```
 
 To force HPA scaling during the test, temporarily lower the CPU target:
