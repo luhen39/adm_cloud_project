@@ -359,3 +359,7 @@ For more details, please consult the report in the `docs/` folder.
 ## Group Members
 - Diogo Leandro: up202005034
 - Luís Ganço: up202004196
+
+---
+
+Final Grade: 18/20
